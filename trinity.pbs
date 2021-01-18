@@ -78,6 +78,10 @@ second=${inpath}/Woylie/Woylie_8625_S1_R2_trimmed_P.fastq.gz
 export TRINITY_OUTDIR=${outpath}/trinity_outdir
 mkdir -p ${TRINITY_OUTDIR}
 
+echo "Testing Singularity..."
+#singularity exec -B ${out} -B ${in} trinity.img env 
+singularity exec -B ${dughome} -B ${myhome} -B ${inpath} ${simg} pwd
+
 ## RUN TRINITY 
 echo "Running Trinity..."
 singularity exec -B ${dughome} -B ${myhome} -B ${in} ${simg} Trinity \
