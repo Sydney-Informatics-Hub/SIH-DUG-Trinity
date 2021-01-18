@@ -2,7 +2,7 @@
 
 #########################################################
 # 
-# Platform: UQ Flashlite 
+# Platform: DUG McCloud
 # Description: 
 #	Trinity de novo transcriptome assembly
 # Trinity user guide and references: 
@@ -31,56 +31,61 @@
 #
 # Suggested acknowledgement:
 # The authors acknowledge the scientific and technical assistance 
-# <or e.g. bioinformatics assistance of > of Sydney Informatics Hub, the 
-# University of Sydney and resources and services provided by the 
-# University of Queensland.
+# <or e.g. bioinformatics assistance of > of Sydney Informatics Hub
 # 
 #########################################################
 
-#PBS -A <account>
-#PBS -l walltime=168:00:00
-#PBS -l select=1:ncpus=24:mem=250gb
-#PBS -N Trinity
-
+#Stop script if it encounters an error.
 set -e
 
-module load singularity/3.5.0
+module add singularity/3.5.1
 
-## EDIT MEM IF REQUIRED
-mem='250G'
+#Set mem and 
+mem='120G'
+NCPUS=272
 
-finish(){
-		echo "$(date): Archiving ${sampleout} in ${TMPDIR} to ${outpath}/${sampleout}.tar.gz"
-		cd ${TMPDIR}
-		rm -rf ${sampleout}/read_partitions
-		singularity exec ${simg} perl /usr/local/bin/trinityrnaseq/util/TrinityStats.pl ${sampleout}/Trinity.fasta > ${sampleout}/Trinity.fasta.stats
-		tar -cvzf "${outpath}/${sampleout}.tar.gz" "${sampleout}"
-                echo "$(date): Saved to ${outpath}/${sampleout}.tar.gz"
-}
-trap finish EXIT
+## SET VARIABLES: REPLACE 
 
-## SET VARIABLES: REPLACE <>
-sample=<sample_name>
-outpath=<path_to_output>
-simg=<path_to_container>
-first=<path_to_fastq1>
-second=<path_to_fastq2>
+#Set home folders needed by dug and singularity
+myhome=/d/home/sihtri/sihtri_nathanielb/
+dughome=/d/sw/Modules/3.2.7/init/
 
-# Do not edit
+#Tissue sample name of fastq files
+sample=8625
+
+#The top level dir of where scripts, input data, and output data should go.
+inpath=/p9/mcc_sihtri/nat
+
+#Singularity Image name
+simg=${inpath}/trinity.img
+
+# Grab trinity version for austerity
 ver=`echo ${simg} | perl -pe 's/^.*trinityrnaseq\.(v.*)\.simg/$1/g'`
-sampleout=${sample}_trinity_${ver}
-export LOCALOUT=${TMPDIR}/${sampleout}
-mkdir -p ${LOCALOUT}
+#Set output path
+sampleout=Woylie_${sample}_trinity_${ver}
+outpath=${inpath}/${sampleout}
+
+#Name of data inputs
+first=${inpath}/Woylie/Woylie_8625_S1_R1_trimmed_P.fastq.gz
+#,${inpath}/Woylie/woylie_heart_S6_R1_trimmed_P.fastq.gz,${inpath}/Woylie/woylie_pskin_S1_R1_trimmed_P.fastq.gz,${inpath}/Woylie/woylie_tongue_S2_R1_trimmed_P.fastq.gz
+second=${inpath}/Woylie/Woylie_8625_S1_R2_trimmed_P.fastq.gz
+#,${inpath}/Woylie/woylie_heart_S6_R2_trimmed_P.fastq.gz,${inpath}/Woylie/woylie_pskin_S1_R2_trimmed_P.fastq.gz,${inpath}/Woylie/woylie_tongue_S2_R2_trimmed_P.fastq.gz
+
+
+# Create output directory (all data here)
+export TRINITY_OUTDIR=${sampleout}/trinity_outdir
+mkdir -p ${TRINITY_OUTDIR}
 
 ## RUN TRINITY 
-singularity exec -B ${TMPDIR} ${simg} Trinity \
+echo "Running Trinity..."
+singularity exec -B ${dughome} -B ${myhome} -B ${in} ${simg} Trinity \
 		--seqType fq \
                 --max_memory ${mem} \
                 --left ${first} \
                 --right ${second} \
-                 --no_normalize_reads \
                 --CPU ${NCPUS} \
-                --output ${LOCALOUT} \
+                --output ${TRINITY_OUTDIR} \
+				--no_normalize_reads \
                 --verbose
 
 echo "$(date): Finished trinity"

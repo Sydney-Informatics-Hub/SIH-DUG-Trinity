@@ -32,40 +32,46 @@
 #PBS -l select=1:ncpus=24:mem=500gb
 #PBS -N Trinity_job1
 
+#Stop script if it encounters an error.
 set -e
 
-module load singularity/3.5.0
+module add singularity/3.5.1
 
-mem='500G'
+#Set mem and 
+mem='120G'
+NCPUS=272
 
-# Set trap
-# EXIT runs on any exit, signalled or not.
-finish(){
-                part=trinity_1
-		echo "$(date): Archiving ${sampleout} in ${TMPDIR} to ${outpath}/${sampleout}/${part}.tar"
-		cd ${TMPDIR}
-		mv ${sampleout} ${part}
-		tar -cf "${outpath}/${sampleout}/${part}.tar" "${part}"
-                echo "$(date): Saved to ${outpath}/${sampleout}/${part}"
-}
-trap finish EXIT
+## SET VARIABLES: REPLACE 
 
-## SET VARIABLES: REPLACE <>
-sample=<sample_name>
-outpath=<path_to_output>
-simg=<path_to_container>
-first=<path_to_fastq1>
-second=<path_to_fastq2>
+#Set home folders needed by dug and singularity
+myhome=/d/home/sihtri/sihtri_nathanielb/
+dughome=/d/sw/Modules/3.2.7/init/
 
-# Do not edit
+#Tissue sample name of fastq files
+sample=8625
+
+#The top level dir of where scripts, input data, and output data should go.
+inpath=/p9/mcc_sihtri/nat
+
+#Singularity Image name
+simg=${inpath}/trinity.img
+
+# Grab trinity version for austerity
 ver=`echo ${simg} | perl -pe 's/^.*trinityrnaseq\.(v.*)\.simg/$1/g'`
-sampleout=${sample}_trinity_${ver}
-export LOCALOUT=${TMPDIR}/${sampleout}
-mkdir -p ${LOCALOUT}
-mkdir -p ${outpath}/${sampleout}
+#Set output path
+sampleout=Woylie_${sample}_trinity_${ver}
+outpath=${inpath}/${sampleout}
+
+#Name of data inputs
+first=${inpath}/Woylie/Woylie_8625_S1_R1_trimmed_P.fastq.gz
+#,${inpath}/Woylie/woylie_heart_S6_R1_trimmed_P.fastq.gz,${inpath}/Woylie/woylie_pskin_S1_R1_trimmed_P.fastq.gz,${inpath}/Woylie/woylie_tongue_S2_R1_trimmed_P.fastq.gz
+second=${inpath}/Woylie/Woylie_8625_S1_R2_trimmed_P.fastq.gz
+#,${inpath}/Woylie/woylie_heart_S6_R2_trimmed_P.fastq.gz,${inpath}/Woylie/woylie_pskin_S1_R2_trimmed_P.fastq.gz,${inpath}/Woylie/woylie_tongue_S2_R2_trimmed_P.fastq.gz
+
+
 
 # Run trinity, stop after inchworm, do not run chrysalis
-singularity exec -B ${TMPDIR} ${simg} Trinity \
+singularity exec -B ${dughome} -B ${myhome} -B ${in} ${simg} Trinity \
 		--seqType fq \
                 --max_memory ${mem} \
                 --left ${first} \
