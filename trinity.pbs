@@ -1,0 +1,86 @@
+#! /bin/bash
+
+#########################################################
+# 
+# Platform: UQ Flashlite 
+# Description: 
+#	Trinity de novo transcriptome assembly
+# Trinity user guide and references: 
+# 	https://github.com/trinityrnaseq/trinityrnaseq/wiki
+# Details:
+#	This PBS script runs trinity de novo transcriptome
+# 	assembly on University of Queensland's Flashlite HPC.
+# Usage: 
+#	Edit the script replacing everything in <> with your
+#	inputs and options. Edit compute resource requests 
+# 	at the #PBS directives and the mem variable (if required). 
+#	See "Compute Resources" for guidance.
+# Singularity containers:
+#	https://data.broadinstitute.org/Trinity/TRINITY_SINGULARITY/
+# Compute resources: 
+#	For single sample assemblies, use:
+#	select=1:ncpus=24:mem=250gb
+#	mem='250G'
+#	For global assemblies, use staged scripts for more efficient
+#	utilization of resources. Or:
+# 	select=1:ncpus=24:mem=500gb
+# 	mem='500G'
+#
+# If you use this script towards a publication, please acknowledge the
+# Sydney Informatics Hub (or co-authorship, where appropriate).
+#
+# Suggested acknowledgement:
+# The authors acknowledge the scientific and technical assistance 
+# <or e.g. bioinformatics assistance of > of Sydney Informatics Hub, the 
+# University of Sydney and resources and services provided by the 
+# University of Queensland.
+# 
+#########################################################
+
+#PBS -A <account>
+#PBS -l walltime=168:00:00
+#PBS -l select=1:ncpus=24:mem=250gb
+#PBS -N Trinity
+
+set -e
+
+module load singularity/3.5.0
+
+## EDIT MEM IF REQUIRED
+mem='250G'
+
+finish(){
+		echo "$(date): Archiving ${sampleout} in ${TMPDIR} to ${outpath}/${sampleout}.tar.gz"
+		cd ${TMPDIR}
+		rm -rf ${sampleout}/read_partitions
+		singularity exec ${simg} perl /usr/local/bin/trinityrnaseq/util/TrinityStats.pl ${sampleout}/Trinity.fasta > ${sampleout}/Trinity.fasta.stats
+		tar -cvzf "${outpath}/${sampleout}.tar.gz" "${sampleout}"
+                echo "$(date): Saved to ${outpath}/${sampleout}.tar.gz"
+}
+trap finish EXIT
+
+## SET VARIABLES: REPLACE <>
+sample=<sample_name>
+outpath=<path_to_output>
+simg=<path_to_container>
+first=<path_to_fastq1>
+second=<path_to_fastq2>
+
+# Do not edit
+ver=`echo ${simg} | perl -pe 's/^.*trinityrnaseq\.(v.*)\.simg/$1/g'`
+sampleout=${sample}_trinity_${ver}
+export LOCALOUT=${TMPDIR}/${sampleout}
+mkdir -p ${LOCALOUT}
+
+## RUN TRINITY 
+singularity exec -B ${TMPDIR} ${simg} Trinity \
+		--seqType fq \
+                --max_memory ${mem} \
+                --left ${first} \
+                --right ${second} \
+                 --no_normalize_reads \
+                --CPU ${NCPUS} \
+                --output ${LOCALOUT} \
+                --verbose
+
+echo "$(date): Finished trinity"

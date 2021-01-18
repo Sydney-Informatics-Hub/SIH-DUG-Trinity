@@ -1,0 +1,91 @@
+#! /bin/bash
+
+#########################################################
+# 
+# Platform: UQ Flashlite 
+# Description: 
+#	Trinity de novo transcriptome assembly.
+#	This PBS script is part of the Staged Trinity workflow
+#	that executes Trinity de novo transcriptome
+# 	assembly on University of Queensland's Flashlite HPC.
+# Usage: 
+#	Run this script when trinity_2.pbs has completed successfully.
+#	Edit the script replacing everything in <> with your
+#	inputs and options. 
+# Outputs:
+#	Trinity.fasta, Trinity.fasta.gene_trans_map, Trinity.fasta.stats
+# Singularity containers:
+#	https://data.broadinstitute.org/Trinity/TRINITY_SINGULARITY/
+#
+# If you use this script towards a publication, please acknowledge the
+# Sydney Informatics Hub (or co-authorship, where appropriate).
+#
+# Suggested acknowledgement:
+# The authors acknowledge the scientific and technical assistance 
+# <or e.g. bioinformatics assistance of > of Sydney Informatics Hub, the 
+# University of Sydney and resources and services provided by the 
+# University of Queensland.
+# 
+#########################################################
+
+#PBS -A <account>
+#PBS -l walltime=336:00:00
+#PBS -l select=1:ncpus=24:mem=192gb
+#PBS -N Trinity_job3
+
+set -e
+
+module load singularity/3.5.0
+
+mem='192G'
+
+# Set trap
+# EXIT runs on any exit, signalled or not.
+finish(){
+		echo "$(date): Saving Trinity.fasta, Trinity.fasta.gene_trans_map, Trinity.timing, partitioned_reads.files.list and recursive_trinity.cmds. Everything else will be deleted"
+		mv ${LOCALOUT}/Trinity* ${outpath}/${sampleout}/.
+                mv ${LOCALOUT}/partitioned_reads.files.list* ${outpath}/${sampleout}/.
+		mv ${LOCALOUT}/recursive_trinity.cmds* ${outpath}/${sampleout}/.
+		singularity exec ${simg} perl /usr/local/bin/trinityrnaseq/util/TrinityStats.pl ${outpath}/${sampleout}/Trinity.fasta > ${outpath}/${sampleout}/Trinity.fasta.stats
+		echo "$(date): Finished Trinity!"
+}
+trap finish EXIT
+
+## SET VARIABLES: REPLACE <>
+sample=<sample_name>
+outpath=<path_to_output>
+simg=<path_to_container>
+first=<path_to_fastq1>
+second=<path_to_fastq2>
+
+# Do not edit
+# Unpack trinity_1.tar to TMPDIR
+ver=`echo ${simg} | perl -pe 's/^.*trinityrnaseq\.(v.*)\.simg/$1/g'`
+sampleout=${sample}_trinity_${ver}
+export LOCALOUT=${TMPDIR}/${sampleout}
+mkdir -p ${LOCALOUT}
+tar -xf ${outpath}/${sampleout}/trinity_2.tar -C ${LOCALOUT}
+mv ${LOCALOUT}/trinity_2/* ${LOCALOUT}
+rm -rf ${LOCALOUT}/trinity_2
+cd ${LOCALOUT}
+
+# Do not edit
+echo "$(date): Create new partitioned_reads.files.list containing new paths..."
+find ${PWD}/ -iname '*trinity.reads.fa' > partitioned_reads.files.list
+echo "$(date): Updating paths for recursive_trinity.cmds"
+perl -pi.bak -e 's|--single \"[\S]+'${sampleout}'|--single "'${PWD}'|g' recursive_trinity.cmds
+perl -pi.bak2 -e 's|--output \"[\S]+'${sampleout}'|--output "'${PWD}'|g' recursive_trinity.cmds
+
+# Run trinity, stop after inchworm, do not run chrysalis
+singularity exec -B ${LOCALOUT} ${simg} Trinity \
+		--seqType fq \
+                --max_memory ${mem} \
+                --left ${first} \
+                --right ${second} \
+                --no_normalize_reads \
+		--CPU ${NCPUS} \
+                --output ${LOCALOUT} \
+                --verbose
+
+echo "$(date): Finished job 3 of Trinity"
+
