@@ -1,4 +1,5 @@
 #! /bin/bash
+#rj name=runWoy queue=sihtri mem=119G features=centos7 runtime=48 
 
 #########################################################
 # 
@@ -15,6 +16,7 @@
 #	inputs and options. Edit compute resource requests 
 # 	at the #PBS directives and the mem variable (if required). 
 #	See "Compute Resources" for guidance.
+#   Submit with: rjs trinity.pbs
 # Singularity containers:
 #	https://data.broadinstitute.org/Trinity/TRINITY_SINGULARITY/
 # Compute resources: 
@@ -73,7 +75,7 @@ second=${inpath}/Woylie/Woylie_8625_S1_R2_trimmed_P.fastq.gz
 
 
 # Create output directory (all data here)
-export TRINITY_OUTDIR=${sampleout}/trinity_outdir
+export TRINITY_OUTDIR=${outpath}/trinity_outdir
 mkdir -p ${TRINITY_OUTDIR}
 
 ## RUN TRINITY 

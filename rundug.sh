@@ -6,6 +6,7 @@
 module add singularity/3.5.1
 
 mem='120G'
+NCPUS=272
 
 # Set trap
 # EXIT runs on any exit, signalled or not.
@@ -53,7 +54,7 @@ singularity exec -B ${dughome} -B ${myhome} -B ${in} trinity.img Trinity \
                 --max_memory ${mem} \
                 --left ${first} \
                 --right ${second} \
-                --CPU 272 \
+                --CPU ${NCPUS} \
                 --workdir ${TRINITY_WORKDIR} \
                 --output ${TRINITY_OUTDIR} \
                 --verbose
